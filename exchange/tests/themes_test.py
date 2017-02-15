@@ -4,7 +4,6 @@ from django.contrib import admin
 from django.contrib.admin.sites import AdminSite
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, RequestFactory
-from exchange.themes.admin import ThemeAdmin
 from exchange.themes.models import Theme
 from shutil import rmtree
 
