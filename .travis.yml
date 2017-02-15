@@ -97,7 +97,6 @@ before_script:
   - wget https://github.com/GeoNode/geonode/tree/master/docs/tutorials/devel/geonode_apis/geoserver_rest/examples/resources/shapefiles/rivers.dbf -O /tmp/rivers.dbf
   - wget https://github.com/GeoNode/geonode/tree/master/docs/tutorials/devel/geonode_apis/geoserver_rest/examples/resources/shapefiles/rivers.prj -O /tmp/rivers.prj
 
-script:
   - sudo a2enmod proxy_http
   - sudo a2enmod headers
   - sudo service apache2 restart
@@ -105,10 +104,21 @@ script:
   # Geonode tests fail
   # - docker exec $container /opt/boundless/exchange/docker/travis/test-geonode.sh
   - python -m flake8 --ignore=F405,F403 --statistics /opt/boundless/exchange/exchange
+  # prepare for coverage report for exchange only applications
   - pytest
+  - export DJANGO_SETTINGS_MODULE='exchange.settings'
+  - export SETTINGS='TEST'
+  - python manage.py migrate
+  - python manage.py collectstatic --noinput
+
+script:
+  - py.test --ignore=tests/ --cov exchange exchange/tests/ --cov-report term-missing
 
 after_script:
   - docker stop $container
+
+after_success:
+  - coveralls
 
 notifications:
   slack:

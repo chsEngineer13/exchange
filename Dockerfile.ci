@@ -43,6 +43,7 @@ RUN echo "GEOS_LIBRARY_PATH = '/opt/boundless/vendor/lib/libgeos_c.so'" >> /opt/
 # Install deps
 RUN virtualenv /env && chmod -R 755 /env
 RUN PATH=$PATH:/opt/boundless/vendor/bin && /env/bin/pip install -r /opt/boundless/exchange/requirements.txt
+RUN /env/bin/pip install pytest-cov coveralls
 
 # Travis provides
 # PostGIS: https://docs.travis-ci.com/user/database-setup/#Using-PostGIS
