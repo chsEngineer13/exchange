@@ -17,5 +17,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 #########################################################################
+import os
 
-from .default import *  # noqa
+if os.getenv('SETTINGS', 'TEST'):
+    from .test_settings import *  # noqa
+else:
+    from .default import *  # noqa
