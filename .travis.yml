@@ -105,7 +105,7 @@ before_script:
   # - docker exec $container /opt/boundless/exchange/docker/travis/test-geonode.sh
   - python -m flake8 --ignore=F405,F403 --statistics /opt/boundless/exchange/exchange
   # prepare for coverage report for exchange only applications
-  - pytest
+  - pytest --ignore=exchange/tests/
   - export DJANGO_SETTINGS_MODULE='exchange.settings'
   - export SETTINGS='TEST'
   - python manage.py migrate
