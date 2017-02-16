@@ -58,7 +58,7 @@ before_script:
 
   # Setup and Start Django
   - export image=$(docker images | head -n 2 | tail -n 1 | awk '{print $3}')
-  - docker run -d -p 8000:8000 $image /opt/boundless/exchange/docker/travis/setup.sh
+  - docker run -d -p 8000:8000 $image /opt/boundless/exchange/docker/travis/run.sh
   - export container=$(docker ps | head -n 2 | tail -n 1 | awk '{print $1}')
 
   # Start XVFB for running tests
@@ -81,11 +81,9 @@ before_script:
 script:
   # flake8 tests
   - python -m flake8 --ignore=F405,F403 --statistics /opt/boundless/exchange/exchange
-  # Geonode tests
-  #- docker exec $container /opt/boundless/exchange/docker/travis/test-geonode.sh
   # prepare for coverage report for exchange only applications
   - PYTEST=0 bash -c 'pytest --ignore=exchange/tests/''
-  - PYTEST=0 bash -c 'py.test --ignore=tests/ --cov exchange exchange/tests/ --cov-report term-missing'
+  - PYTEST=1 bash -c 'py.test --ignore=tests/ --cov exchange exchange/tests/ --cov-report term-missing'
 
 after_script:
   - docker stop $container

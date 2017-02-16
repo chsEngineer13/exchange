@@ -2,7 +2,7 @@ FROM centos:6.7
 
 RUN sed -i -e 's:keepcache=0:keepcache=1:' /etc/yum.conf && \
     yum -y install https://s3.amazonaws.com/exchange-development-yum/exchange-development-repo-1.0.0.noarch.rpm && \
-    yum update -y && \
+    # yum update -y && \
     yum -y install boundless-vendor-libs \
                    geonode-geoserver \
                    bzip2-devel \
@@ -39,3 +39,6 @@ RUN echo "GEOS_LIBRARY_PATH = '/opt/boundless/vendor/lib/libgeos_c.so'" >> /opt/
 # Install python dependencies
 RUN virtualenv /env && chmod -R 755 /env
 RUN PATH=$PATH:/opt/boundless/vendor/bin && /env/bin/pip install -r /opt/boundless/exchange/requirements.txt
+
+# collectstatic and make migrations in container
+RUN /opt/boundless/exchange/docker/travis/setup.sh

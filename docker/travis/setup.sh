@@ -15,6 +15,3 @@ $CMD migrate --noinput
 $CMD loaddata default_users
 $CMD loaddata base_resources
 $CMD loaddata default_oauth_apps
-
-# start django
-python $CMD/manage.py runserver 0.0.0.0:8000

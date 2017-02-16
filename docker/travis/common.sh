@@ -9,8 +9,8 @@ export POSTGIS_URL="postgis://exchange:boundless@$HOST_IP:5432/exchange_data"
 
 # source vendor libs and active venv
 source /etc/profile.d/vendor-libs.sh
-source /env/bin/activate;
+source /env/bin/activate
 
 # global variables
-INSTALL_DIR="/opt/boundless/exchange";
-CMD="python $INSTALL_DIR/manage.py";
+INSTALL_DIR="/opt/boundless/exchange"
+CMD="python $INSTALL_DIR/manage.py"
