@@ -9,7 +9,7 @@ python:
 
 services:
   - rabbitmq
-  - elasticsearch # Output - service does not exist
+  - elasticsearch
   - postgresql
 
 addons:
@@ -36,39 +36,16 @@ install:
   # This upgrades to 1.12.1 and 1.8.0, respectively, as of 2016-09
   - sudo apt-get install -qq --only-upgrade docker-engine
 
-  # reverse proxy
-  - sudo apt-get -qq install apache2
-  - sudo cp -f docker/travis/exchange.conf /etc/apache2/sites-available/000-default.conf
+  # Install non docker packages for exchange flake8, coverage and  unit tests
+  - pip install selenium requests flake8 pytest Pillow python-resize-image coverage pytest-cov Django==1.8.17
 
-  # Install Java, Jetty and Geoserver
-  - sudo apt-get -qq install openjdk-8-jdk-headless
-  - wget --directory-prefix=/tmp -q http://central.maven.org/maven2/org/eclipse/jetty/jetty-runner/9.3.8.v20160314/jetty-runner-9.3.8.v20160314.jar
-  - wget --directory-prefix /tmp -q https://exchange-development-war.s3.amazonaws.com/war/geoserver.war
-  - unzip -qq -o /tmp/geoserver.war -d /tmp/geoserver
-
-  - sed -i.bak 's@<baseUrl>\([^<][^<]*\)</baseUrl>@<baseUrl>http://localhost/</baseUrl>@' /tmp/geoserver/data/security/auth/geonodeAuthProvider/config.xml
-  - mkdir -p /tmp/geoserver/data/geogig
-  - printf "[user]\nname = admin\nemail = exchange@boundlessgeo.com\n" > /tmp/geoserver/data/geogig/.geogigconfig
-
-  # Install Selenium for testing, Requests to grab some shapefiles and Flake8 for linting
-  - pip install selenium requests flake8==3.0.4
-
-  # Install Marionette driver for later FF versions
-  - wget https://github.com/mozilla/geckodriver/releases/download/v0.11.1/geckodriver-v0.11.1-linux64.tar.gz
-  - tar zxvf geckodriver-v0.11.1-linux64.tar.gz
-  - sudo mv geckodriver /usr/bin
-
-  # And get the chromedriver
+  # Install chromedriver
   - wget http://chromedriver.storage.googleapis.com/2.24/chromedriver_linux64.zip
   - unzip chromedriver_linux64.zip
   - sudo mv chromedriver /usr/bin
 
 before_script:
-  # - sleep 10 # Elasticsearch needs this
-
-  # Run Geoserver
-  - source docker/travis/geoserver-settings.sh
-  - java -XX:MaxPermSize=1024m -Dorg.eclipse.jetty.server.webapp.parentLoaderPriority=true -DGEOSERVER_DATA_DIR=/tmp/geoserver/data -Duser.home=/tmp/geoserver/data/geogig -jar /tmp/jetty-runner-9.3.8.v20160314.jar --path /geoserver /tmp/geoserver.war &
+  - sleep 10 # Elasticsearch needs this
 
   # Initialize databases for Exchange and Geonode
   - psql -U postgres -h 127.0.0.1 -c "CREATE USER exchange WITH SUPERUSER PASSWORD 'boundless'"
@@ -77,41 +54,38 @@ before_script:
   - psql -U postgres -h 127.0.0.1 -d exchange_data -c "CREATE EXTENSION postgis"
 
   # Build the docker container from the CI Dockerfile
-  - docker build -f Dockerfile.ci .
+  - docker build -f docker/travis/Dockerfile.ci .
 
-  # Start the container
+  # Setup and Start Django
   - export image=$(docker images | head -n 2 | tail -n 1 | awk '{print $3}')
-  - docker run -d -p 8000:8000 $image /opt/boundless/exchange/docker/travis/run-server.sh
+  - docker run -d -p 8000:8000 $image /opt/boundless/exchange/docker/travis/setup.sh
   - export container=$(docker ps | head -n 2 | tail -n 1 | awk '{print $1}')
-
-  # Run migrations
-  - docker exec $container /opt/boundless/exchange/docker/travis/migrate.sh
 
   # Start XVFB for running tests
   - "export DISPLAY=:99.0"
   - "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16"
   - sleep 3 # give xvfb some time to start
 
-  - wget https://github.com/GeoNode/geonode/tree/master/docs/tutorials/devel/geonode_apis/geoserver_rest/examples/resources/shapefiles/rivers.shp -O /tmp/rivers.shp
-  - wget https://github.com/GeoNode/geonode/tree/master/docs/tutorials/devel/geonode_apis/geoserver_rest/examples/resources/shapefiles/rivers.shx -O /tmp/rivers.shx
-  - wget https://github.com/GeoNode/geonode/tree/master/docs/tutorials/devel/geonode_apis/geoserver_rest/examples/resources/shapefiles/rivers.dbf -O /tmp/rivers.dbf
-  - wget https://github.com/GeoNode/geonode/tree/master/docs/tutorials/devel/geonode_apis/geoserver_rest/examples/resources/shapefiles/rivers.prj -O /tmp/rivers.prj
+  # Basic test if Django is up
+  - wget http://localhost:8000
 
-script:
-  - sudo a2enmod proxy_http
-  - sudo a2enmod headers
-  - sudo service apache2 restart
-  - wget http://localhost/geoserver/index.html
-  # Geonode tests fail
-  # - docker exec $container /opt/boundless/exchange/docker/travis/test-geonode.sh
-  - python -m flake8 --ignore=F405,F403 --statistics /opt/boundless/exchange/exchange
-  # prepare for coverage report for exchange only applications
-  - pytest --ignore=exchange/tests/
+  # Basic test if GeoServer is up
+  - wget http://localhost:8080/geoserver/index.html
+
+  # setup local pytest env
   - export DJANGO_SETTINGS_MODULE='exchange.settings'
-  - export SETTINGS='TEST'
+  - export PYTEST=1
   - python manage.py migrate
   - python manage.py collectstatic --noinput
-  - py.test --ignore=tests/ --cov exchange exchange/tests/ --cov-report term-missing
+
+script:
+  # flake8 tests
+  - python -m flake8 --ignore=F405,F403 --statistics /opt/boundless/exchange/exchange
+  # Geonode tests
+  #- docker exec $container /opt/boundless/exchange/docker/travis/test-geonode.sh
+  # prepare for coverage report for exchange only applications
+  - PYTEST=0 bash -c 'pytest --ignore=exchange/tests/''
+  - PYTEST=0 bash -c 'py.test --ignore=tests/ --cov exchange exchange/tests/ --cov-report term-missing'
 
 after_script:
   - docker stop $container
@@ -119,6 +93,6 @@ after_script:
 after_success:
   - coveralls
 
-notifications:
-  slack:
-    secure: Z2nAgjWI9sLH874otcCaxiTYz0Emsco1hbqi6H4dVJo+kREHuq9jjiGzIIs6+1fi3QzUxxoWgL7mddB/ngkOCwfMimm8tnD5xbYjdr/zNVChQTS8l25ZjsoMi0pDdwAFwQ6sKpFAAZY5Hsl9KGXxjfwbeYNnJL4QKGVBOmSZ8sdtRVulyLdrVM1C3mrYF9yyR/Yr3/F6/IrSuDDOBVS+6jrl5P9PCQvmQWkqMFBIevY0NS0111Oi6qzSUladK27juBmZXOFQpJqJ1gTcCbuQkj/57SXuYH1KbuTxK5w+ghjuyJKpN4EYNvnjEjpgSVgvYaiIX3FgDhK6YaptFA3/siQgSKq1GTbC6gsY3toZlKxfDlqRDS3K1oSPXIiWuJrWV7JH49GaORtqq2FaFCn3D/Fwdc4WH6OveaFYiC/hpXI6M0gqLwTY9LqpNbEqMvHCI3RcBtY/jkhu3ErGKdB5waYuvyD5QfRVvBoY0411iu2k16SqWcBzaS9fZhh25rKQ449iPrTwlGdjV1jjpSBDoMRgOFulCTHhQKHO7QqJzE1TTeydYzFb1MDotBHt4MZz29D6/68KJfLV+7Tr83DwyX7I+Oeb2hUCcDT9xfYZoCmZAjrow0mYLrqWv087BGzvygny9b5pIu4ia05UrralZeoUlMovvZBzMogF3kWYikQ=
+#notifications:
+#  slack:
+#    secure: Z2nAgjWI9sLH874otcCaxiTYz0Emsco1hbqi6H4dVJo+kREHuq9jjiGzIIs6+1fi3QzUxxoWgL7mddB/ngkOCwfMimm8tnD5xbYjdr/zNVChQTS8l25ZjsoMi0pDdwAFwQ6sKpFAAZY5Hsl9KGXxjfwbeYNnJL4QKGVBOmSZ8sdtRVulyLdrVM1C3mrYF9yyR/Yr3/F6/IrSuDDOBVS+6jrl5P9PCQvmQWkqMFBIevY0NS0111Oi6qzSUladK27juBmZXOFQpJqJ1gTcCbuQkj/57SXuYH1KbuTxK5w+ghjuyJKpN4EYNvnjEjpgSVgvYaiIX3FgDhK6YaptFA3/siQgSKq1GTbC6gsY3toZlKxfDlqRDS3K1oSPXIiWuJrWV7JH49GaORtqq2FaFCn3D/Fwdc4WH6OveaFYiC/hpXI6M0gqLwTY9LqpNbEqMvHCI3RcBtY/jkhu3ErGKdB5waYuvyD5QfRVvBoY0411iu2k16SqWcBzaS9fZhh25rKQ449iPrTwlGdjV1jjpSBDoMRgOFulCTHhQKHO7QqJzE1TTeydYzFb1MDotBHt4MZz29D6/68KJfLV+7Tr83DwyX7I+Oeb2hUCcDT9xfYZoCmZAjrow0mYLrqWv087BGzvygny9b5pIu4ia05UrralZeoUlMovvZBzMogF3kWYikQ=

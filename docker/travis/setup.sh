@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
-# Run migrations to get initial data into Postgres
-# and copy static files (images, etc) to $DJANGO_STATIC_ROOT
 
+# source common settings
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
-source $DIR/exchange-settings.sh;
-source $DIR/venv.sh
-source /etc/profile.d/vendor-libs.sh
+source $DIR/common.sh
 
+# collect static
 $CMD collectstatic --noinput
+
+# migrations
 $CMD migrate account --noinput
 $CMD migrate --noinput
+
+# load fixtures
 $CMD loaddata default_users
 $CMD loaddata base_resources
 $CMD loaddata default_oauth_apps
+
+# start django
+python $CMD/manage.py runserver 0.0.0.0:8000

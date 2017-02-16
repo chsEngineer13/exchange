@@ -19,7 +19,7 @@
 #########################################################################
 import os
 
-if os.getenv('SETTINGS', 'TEST'):
+if os.getenv('PYTEST') == 1:
     from .test_settings import *  # noqa
 else:
     from .default import *  # noqa
