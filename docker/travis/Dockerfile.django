@@ -37,4 +37,4 @@ RUN virtualenv /env && chmod -R 755 /env
 RUN PATH=$PATH:/opt/boundless/vendor/bin && /env/bin/pip install -r /opt/boundless/exchange/requirements.txt
 RUN /opt/boundless/exchange/docker/travis/setup.sh
 EXPOSE 8000
-CMD ["/env/bin/python", "/opt/boundless/exchange/manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["/opt/boundless/exchange/docker/travis/run.sh"]
