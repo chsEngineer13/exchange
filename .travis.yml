@@ -8,8 +8,8 @@ python:
   - 2.7
 
 services:
+  - docker
   - rabbitmq
-  - elasticsearch
   - postgresql
 
 addons:
@@ -18,81 +18,54 @@ addons:
     packages:
     - postgresql-9.6-postgis-2.3
 
-# branches:
-#   only:
-#   - master
-
 before_install:
   # Allow connections to PG from our Docker instance
   - echo "host all all 0.0.0.0/0 md5" | sudo tee -a /etc/postgresql/9.6/main/pg_hba.conf
   - echo "listen_addresses = '*'" | sudo tee -a /etc/postgresql/9.6/main/postgresql.conf
   - sudo service postgresql stop
   - sudo service postgresql start 9.6
+  # Create Databases
+  - psql -U postgres -h 127.0.0.1 -c "CREATE USER exchange WITH SUPERUSER PASSWORD 'boundless'"
+  - psql -U postgres -h 127.0.0.1 -c "CREATE DATABASE exchange WITH OWNER exchange"
+  - psql -U postgres -h 127.0.0.1 -c "CREATE DATABASE exchange_data WITH OWNER exchange"
+  - psql -U postgres -h 127.0.0.1 -d exchange_data -c "CREATE EXTENSION postgis"
 
-  - sudo apt-get -qq update
-  # - sudo apt-get upgrade
 install:
-  # Docker version is 1.12.0, Compose is 1.7.0
-  # This upgrades to 1.12.1 and 1.8.0, respectively, as of 2016-09
-  - sudo apt-get install -qq --only-upgrade docker-engine
-
-  # Install non docker packages for exchange flake8, coverage and  unit tests
-  - pip install selenium requests flake8 pytest Pillow python-resize-image coverage pytest-cov Django==1.8.17
-
+  # Setup and Start Django Container
+  - docker build -t django -f docker/travis/Dockerfile.django .
+  - docker run -d -p 127.0.0.1:8000:8000 -name django django
   # Install chromedriver
   - wget http://chromedriver.storage.googleapis.com/2.24/chromedriver_linux64.zip
   - unzip chromedriver_linux64.zip
   - sudo mv chromedriver /usr/bin
 
 before_script:
-  - sleep 10 # Elasticsearch needs this
-
-  # Initialize databases for Exchange and Geonode
-  - psql -U postgres -h 127.0.0.1 -c "CREATE USER exchange WITH SUPERUSER PASSWORD 'boundless'"
-  - psql -U postgres -h 127.0.0.1 -c "CREATE DATABASE exchange WITH OWNER exchange"
-  - psql -U postgres -h 127.0.0.1 -c "CREATE DATABASE exchange_data WITH OWNER exchange"
-  - psql -U postgres -h 127.0.0.1 -d exchange_data -c "CREATE EXTENSION postgis"
-
-  # Build the docker container from the CI Dockerfile
-  - docker build -f docker/travis/Dockerfile.ci .
-
-  # Setup and Start Django
-  - export image=$(docker images | head -n 2 | tail -n 1 | awk '{print $3}')
-  - docker run -d -p 8000:8000 $image /opt/boundless/exchange/docker/travis/run.sh
-  - export container=$(docker ps | head -n 2 | tail -n 1 | awk '{print $1}')
-
+  # setup local pytest env
+  - pip install Pillow python-resize-image Django==1.8.17
+  - pip install selenium flake8 pytest coverage pytest-cov
+  - export DJANGO_SETTINGS_MODULE='exchange.settings'
+  - export PYTEST=1
+  - python manage.py migrate
+  - python manage.py collectstatic --noinput
   # Start XVFB for running tests
   - "export DISPLAY=:99.0"
   - "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16"
   - sleep 3 # give xvfb some time to start
 
+script:
   # Basic test if Django is up
   - wget http://localhost:8000
-
-  # Basic test if GeoServer is up
-  - wget http://localhost:8080/geoserver/index.html
-
-  # setup local pytest env
-  - export DJANGO_SETTINGS_MODULE='exchange.settings'
-  - export PYTEST=1
-  - python manage.py migrate
-  - python manage.py collectstatic --noinput
-
-script:
   # flake8 tests
   - python -m flake8 --ignore=F405,F403 --statistics /opt/boundless/exchange/exchange
   # prepare for coverage report for exchange only applications
   - PYTEST=0 bash -c 'pytest --ignore=exchange/tests/''
   - PYTEST=1 bash -c 'py.test --ignore=tests/ --cov exchange exchange/tests/ --cov-report term-missing'
 
-after_script:
-  - docker stop $container
-
 after_success:
   - coveralls
 
 after_failure:
-- docker logs $container
+- docker logs django
 
 #notifications:
 #  slack:

@@ -2,7 +2,6 @@
 
 # export travis ci specific os env settings
 export HOST_IP=`netstat -nr | grep '^0\.0\.0\.0' | awk '{print $2}'`
-export ES_URL="http://$HOST_IP:9200/"
 export BROKER_URL="amqp://guest:guest@$HOST_IP:5672/"
 export DATABASE_URL="postgres://exchange:boundless@$HOST_IP:5432/exchange"
 export POSTGIS_URL="postgis://exchange:boundless@$HOST_IP:5432/exchange_data"
@@ -14,3 +13,20 @@ source /env/bin/activate
 # global variables
 INSTALL_DIR="/opt/boundless/exchange"
 CMD="/env/bin/python $INSTALL_DIR/manage.py"
+
+# source common settings
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
+source $DIR/common.sh
+
+# collect static
+$CMD collectstatic --noinput
+
+# migrations
+$CMD migrate account --noinput
+$CMD migrate --noinput
+
+# load fixtures
+$CMD loaddata default_users
+$CMD loaddata base_resources
+$CMD loaddata default_oauth_apps
+$CMD runserver 0.0.0.0:8000
