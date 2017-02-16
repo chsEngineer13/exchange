@@ -4,6 +4,7 @@ RUN sed -i -e 's:keepcache=0:keepcache=1:' /etc/yum.conf && \
     yum -y install https://s3.amazonaws.com/exchange-development-yum/exchange-development-repo-1.0.0.noarch.rpm && \
     # yum update -y && \
     yum -y install boundless-vendor-libs \
+                   geonode-geoserver \
                    bzip2-devel \
                    db4-devel \
                    expat-devel \
@@ -28,6 +29,9 @@ RUN sed -i -e 's:keepcache=0:keepcache=1:' /etc/yum.conf && \
                    wget \
                    zlib-devel
 
+# Start Tomcat + GeoServer
+RUN service tomcat start
+
 # Add the Exchange repo
 ADD . /opt/boundless/exchange
 RUN echo "GEOS_LIBRARY_PATH = '/opt/boundless/vendor/lib/libgeos_c.so'" >> /opt/boundless/exchange/exchange/settings/default.py
@@ -36,5 +40,5 @@ RUN echo "GEOS_LIBRARY_PATH = '/opt/boundless/vendor/lib/libgeos_c.so'" >> /opt/
 RUN virtualenv /env && chmod -R 755 /env
 RUN PATH=$PATH:/opt/boundless/vendor/bin && /env/bin/pip install -r /opt/boundless/exchange/requirements.txt
 RUN /opt/boundless/exchange/docker/travis/setup.sh
-EXPOSE 8000
+EXPOSE 8000 8080
 CMD ["/opt/boundless/exchange/docker/travis/run.sh"]

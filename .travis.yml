@@ -31,11 +31,9 @@ before_install:
   - psql -U postgres -h 127.0.0.1 -d exchange_data -c "CREATE EXTENSION postgis"
 
 install:
-  # Setup and Start Django Container
-  - docker build -t django -f docker/travis/Dockerfile.django .
-  - docker run -d -p 8000:8000 --name django django
-  - sleep 3
-  - docker logs django
+  # Setup and Start CentOS Container
+  - docker build -t exchange -f docker/travis/Dockerfile.ci .
+  - docker run -d -p 8000:8000 -p 8080:8080 --name exchange exchange
   # Install chromedriver
   - wget http://chromedriver.storage.googleapis.com/2.24/chromedriver_linux64.zip
   - unzip chromedriver_linux64.zip
@@ -57,6 +55,8 @@ before_script:
 script:
   # Basic test if Django is up
   - wget http://localhost:8000
+  # Basic test if GeoServer is up
+  - wget http://localhost:8080/geoserver/index.html
   # flake8 tests
   - python -m flake8 --ignore=F405,F403 --statistics /opt/boundless/exchange/exchange
   # run pytests
