@@ -14,10 +14,6 @@ source /env/bin/activate
 INSTALL_DIR="/opt/boundless/exchange"
 CMD="/env/bin/python $INSTALL_DIR/manage.py"
 
-# source common settings
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
-source $DIR/common.sh
-
 # collect static
 $CMD collectstatic --noinput
 
@@ -29,4 +25,4 @@ $CMD migrate --noinput
 $CMD loaddata default_users
 $CMD loaddata base_resources
 $CMD loaddata default_oauth_apps
-$CMD runserver 0.0.0.0:8000
+nohup bash -c '$CMD runserver 0.0.0.0:8000 &'
