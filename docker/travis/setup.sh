@@ -25,4 +25,3 @@ $CMD migrate --noinput
 $CMD loaddata default_users
 $CMD loaddata base_resources
 $CMD loaddata default_oauth_apps
-nohup bash -c '$CMD runserver 0.0.0.0:8000 &'

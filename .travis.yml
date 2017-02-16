@@ -34,6 +34,8 @@ install:
   # Setup and Start Django Container
   - docker build -t django -f docker/travis/Dockerfile.django .
   - docker run -d -p 8000:8000 --name django django
+  - sleep 3
+  - docker logs django
   # Install chromedriver
   - wget http://chromedriver.storage.googleapis.com/2.24/chromedriver_linux64.zip
   - unzip chromedriver_linux64.zip
