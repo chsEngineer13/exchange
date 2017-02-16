@@ -13,4 +13,4 @@ source /env/bin/activate
 
 # global variables
 INSTALL_DIR="/opt/boundless/exchange"
-CMD="python $INSTALL_DIR/manage.py"
+CMD="/env/bin/python $INSTALL_DIR/manage.py"
