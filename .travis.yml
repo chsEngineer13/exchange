@@ -64,7 +64,7 @@ after_success:
   - coveralls
 
 after_failure:
-- docker logs django
+  - docker logs django
 
 #notifications:
 #  slack:
