@@ -58,7 +58,7 @@ script:
   # flake8 tests
   - python -m flake8 --ignore=F405,F403 --statistics /opt/boundless/exchange/exchange
   # prepare for coverage report for exchange only applications
-  - PYTEST=0 bash -c 'pytest --ignore=exchange/tests/''
+  - PYTEST=0 bash -c 'pytest --ignore=exchange/tests/'
   - PYTEST=1 bash -c 'py.test --ignore=tests/ --cov exchange exchange/tests/ --cov-report term-missing'
 
 after_success:
