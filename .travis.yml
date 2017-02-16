@@ -19,7 +19,7 @@ addons:
     - postgresql-9.6-postgis-2.3
 
 before_install:
-  # Allow connections to PG from our Docker instance
+  # Allow connections to PG from container
   - echo "host all all 0.0.0.0/0 md5" | sudo tee -a /etc/postgresql/9.6/main/pg_hba.conf
   - echo "listen_addresses = '*'" | sudo tee -a /etc/postgresql/9.6/main/postgresql.conf
   - sudo service postgresql stop
@@ -31,7 +31,7 @@ before_install:
   - psql -U postgres -h 127.0.0.1 -d exchange_data -c "CREATE EXTENSION postgis"
 
 install:
-  # Setup and Start CentOS Container
+  # Setup and start container
   - docker build -t exchange -f docker/travis/Dockerfile.ci .
   - docker run -d -p 8000:8000 -p 8080:8080 --name exchange exchange
   # Install chromedriver
@@ -47,7 +47,7 @@ before_script:
   - export PYTEST=1
   - PYTEST=True bash -c 'python manage.py migrate'
   - PYTEST=True bash -c 'python manage.py collectstatic --noinput'
-  # Start XVFB for running tests
+  # Start XVFB for running selenium tests
   - "export DISPLAY=:99.0"
   - "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16"
   - sleep 3 # give xvfb some time to start
